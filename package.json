@@ -6,7 +6,8 @@
   "scripts": {
     "build": "node build.js",
     "watch": "node build.js --watch",
-    "serve": "node server.js"
+    "serve": "node server.js",
+    "start": "node server.js"
   },
   "dependencies": {
     "chokidar": "^4.0.3",

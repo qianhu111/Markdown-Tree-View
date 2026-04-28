@@ -52,6 +52,7 @@ app.get("/", (_, res) => {
   res.sendFile(path.join(PUBLIC_DIR, "index.html"));
 });
 
-app.listen(PORT, "127.0.0.1", () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server started: http://127.0.0.1:${PORT}`);
+  console.log(`Server started: http://localhost:${PORT}`);
 });

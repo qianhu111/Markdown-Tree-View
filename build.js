@@ -7,6 +7,7 @@ const CONTENT_DIR = path.join(ROOT, "content");
 const PUBLIC_DIR = path.join(ROOT, "public");
 const TEMPLATE_FILE = path.join(ROOT, "templates", "page.html");
 const ASSETS_DIR = path.join(ROOT, "assets");
+const CONFIG_FILE = path.join(ROOT, "config.json");
 const WATCH_MODE = process.argv.includes("--watch");
 
 const md = new MarkdownIt({
@@ -169,8 +170,24 @@ function extractTags(mdRaw) {
 function renderPage(template, title, treeHtml, contentHtml) {
   return template
     .replace(/\{\{title\}\}/g, title)
+    .replace(/\{\{siteTitle\}\}/g, siteTitleGlobal)
     .replace(/\{\{tree\}\}/g, treeHtml)
     .replace(/\{\{content\}\}/g, contentHtml);
+}
+
+let siteTitleGlobal = "Markdown Tree View";
+
+function loadConfig() {
+  if (!fs.existsSync(CONFIG_FILE)) return { siteTitle: "Markdown Tree View" };
+  try {
+    const raw = fs.readFileSync(CONFIG_FILE, "utf8");
+    const cfg = JSON.parse(raw);
+    return {
+      siteTitle: typeof cfg.siteTitle === "string" && cfg.siteTitle.trim() ? cfg.siteTitle.trim() : "Markdown Tree View"
+    };
+  } catch {
+    return { siteTitle: "Markdown Tree View" };
+  }
 }
 
 function buildSite() {
@@ -182,6 +199,8 @@ function buildSite() {
   copyDir(ASSETS_DIR, path.join(PUBLIC_DIR, "assets"));
 
   const template = fs.readFileSync(TEMPLATE_FILE, "utf8");
+  const config = loadConfig();
+  siteTitleGlobal = config.siteTitle;
   const mdFiles = walkContent(CONTENT_DIR);
 
   const byName = new Map();
@@ -237,7 +256,7 @@ function buildSite() {
       : "<p>标签：无</p>";
 
     const wrapped = `<article>${html}<section class="meta">${tagsHtml}${backlinksHtml}</section></article>`;
-    const pageHtml = renderPage(template, p.title, treeHtml, wrapped);
+    const pageHtml = renderPage(template, `${p.title} - ${config.siteTitle}`, treeHtml, wrapped);
 
     const outFile = path.join(PUBLIC_DIR, p.rel.replace(/\.md$/i, ".html"));
     ensureDir(path.dirname(outFile));
@@ -247,8 +266,8 @@ function buildSite() {
   const indexItems = pages
     .map((p) => `<li><a href="${p.url}">${p.title}</a> <small>${p.rel}</small></li>`)
     .join("");
-  const indexContent = `<h1>知识库首页</h1><p>共 ${pages.length} 篇文档</p><ul>${indexItems}</ul>`;
-  fs.writeFileSync(path.join(PUBLIC_DIR, "index.html"), renderPage(template, "首页", treeHtml, indexContent), "utf8");
+  const indexContent = `<h1>${config.siteTitle}</h1><p>共 ${pages.length} 篇文档</p><ul>${indexItems}</ul>`;
+  fs.writeFileSync(path.join(PUBLIC_DIR, "index.html"), renderPage(template, `${config.siteTitle} - 首页`, treeHtml, indexContent), "utf8");
 
   const tagDir = path.join(PUBLIC_DIR, "tags");
   ensureDir(tagDir);
@@ -257,12 +276,12 @@ function buildSite() {
     .map((t) => `<li><a href="/tags/${slugifyTag(t)}.html">#${t}</a> (${tagMap.get(t).length})</li>`)
     .join("");
 
-  fs.writeFileSync(path.join(tagDir, "index.html"), renderPage(template, "标签", treeHtml, `<h1>标签页</h1><ul>${tagIndexList}</ul>`), "utf8");
+  fs.writeFileSync(path.join(tagDir, "index.html"), renderPage(template, `${config.siteTitle} - 标签`, treeHtml, `<h1>标签页</h1><ul>${tagIndexList}</ul>`), "utf8");
 
   for (const [tag, items] of tagMap.entries()) {
     const list = items.map((it) => `<li><a href="${it.url}">${it.title}</a></li>`).join("");
     const content = `<h1>#${tag}</h1><ul>${list}</ul>`;
-    fs.writeFileSync(path.join(tagDir, `${slugifyTag(tag)}.html`), renderPage(template, `#${tag}`, treeHtml, content), "utf8");
+    fs.writeFileSync(path.join(tagDir, `${slugifyTag(tag)}.html`), renderPage(template, `${config.siteTitle} - #${tag}`, treeHtml, content), "utf8");
   }
 
   const search = pages.map((p) => ({
@@ -286,7 +305,7 @@ function startWatch() {
 
   buildSite();
 
-  const watcher = chokidar.watch([CONTENT_DIR, TEMPLATE_FILE, ASSETS_DIR], {
+  const watcher = chokidar.watch([CONTENT_DIR, TEMPLATE_FILE, ASSETS_DIR, CONFIG_FILE], {
     ignoreInitial: true
   });
 

@@ -27,25 +27,76 @@ body {
   position: sticky;
   top: 0;
   z-index: 2;
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr minmax(260px, 420px) auto;
   gap: 12px;
   align-items: center;
   padding: 12px 16px;
   border-bottom: 1px solid var(--line);
   background: var(--panel);
 }
+.brand-wrap {
+  min-width: 0;
+}
 .brand {
   color: var(--text);
   text-decoration: none;
   font-weight: 700;
 }
+.toolbar {
+  margin-top: 8px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.toolbar a, .toolbar button {
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--text);
+  text-decoration: none;
+  background: transparent;
+  cursor: pointer;
+}
+.search-wrap {
+  position: relative;
+}
 #searchInput {
-  flex: 1;
+  width: 100%;
   padding: 8px 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: transparent;
   color: var(--text);
+}
+.search-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  max-height: 280px;
+  overflow: auto;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.18);
+}
+.search-dropdown a {
+  display: block;
+  padding: 10px 12px;
+  color: var(--text);
+  text-decoration: none;
+  border-bottom: 1px solid var(--line);
+}
+.search-dropdown a:last-child {
+  border-bottom: 0;
+}
+.search-dropdown a:hover {
+  background: rgba(127, 127, 127, 0.15);
+}
+.actions {
+  display: flex;
+  gap: 8px;
 }
 #themeToggle {
   padding: 8px 10px;
@@ -57,22 +108,26 @@ body {
 }
 .layout {
   display: grid;
-  grid-template-columns: 280px minmax(0, 1fr) 280px;
+  grid-template-columns: 280px minmax(0, 1fr);
   gap: 14px;
   padding: 14px;
 }
-.sidebar, .content, .rightbar {
+.sidebar, .content {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 14px;
 }
 .sidebar ul { list-style: none; padding-left: 14px; }
-.sidebar a, .content a, .rightbar a {
+.sidebar a, .content a {
   color: var(--link);
   text-decoration: none;
 }
-.sidebar a:hover, .content a:hover, .rightbar a:hover { text-decoration: underline; }
+.sidebar a:hover, .content a:hover { text-decoration: underline; }
+.sidebar a.active {
+  font-weight: 700;
+  text-decoration: underline;
+}
 .content pre {
   padding: 12px;
   border-radius: 8px;
@@ -92,6 +147,18 @@ body {
   margin-top: 20px;
   padding-top: 12px;
 }
+.reading-mode .layout {
+  grid-template-columns: 1fr;
+}
+.reading-mode #sidebar {
+  display: none;
+}
+.hidden {
+  display: none !important;
+}
 @media (max-width: 1080px) {
+  .topbar {
+    grid-template-columns: 1fr;
+  }
   .layout { grid-template-columns: 1fr; }
 }
