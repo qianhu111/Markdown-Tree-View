@@ -108,4 +108,4 @@ node server.js
 </table>
 
 ## 📄 License
-MIT License
+[MIT License](https://github.com/qianhu111/Markdown-Tree-View/blob/main/LICENSE)
