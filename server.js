@@ -51,8 +51,8 @@ function loadConfig() {
 }
 
 const cfg = loadConfig();
-const PUBLIC_DIR = path.join(ROOT, cfg.publicDir);
-const CONTENT_DIR = path.join(ROOT, cfg.contentDir);
+const PUBLIC_DIR = path.resolve(ROOT, cfg.publicDir);
+const CONTENT_DIR = path.resolve(ROOT, cfg.contentDir);
 const PORT = Number(process.env.PORT || cfg.port || 3000);
 const HOST = process.env.HOST || cfg.host || "127.0.0.1";
 
@@ -105,3 +105,4 @@ app.listen(PORT, HOST, () => {
   console.log(`Server started: http://${HOST}:${PORT}`);
   if (HOST !== "127.0.0.1") console.log(`Local access: http://127.0.0.1:${PORT}`);
 });
+

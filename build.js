@@ -50,10 +50,10 @@ function loadConfig() {
 }
 
 const config = loadConfig();
-const CONTENT_DIR = path.join(ROOT, config.contentDir);
-const PUBLIC_DIR = path.join(ROOT, config.publicDir);
-const TEMPLATE_FILE = path.join(ROOT, config.templatesDir, "page.html");
-const ASSETS_DIR = path.join(ROOT, config.assetsDir);
+const CONTENT_DIR = path.resolve(ROOT, config.contentDir);
+const PUBLIC_DIR = path.resolve(ROOT, config.publicDir);
+const TEMPLATE_FILE = path.resolve(ROOT, config.templatesDir, "page.html");
+const ASSETS_DIR = path.resolve(ROOT, config.assetsDir);
 
 const md = new MarkdownIt({ html: false, linkify: true, typographer: false });
 
@@ -278,6 +278,7 @@ function startWatch() {
 
 if (WATCH_MODE) startWatch();
 else buildSite();
+
 
 
 
