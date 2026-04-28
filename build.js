@@ -1,0 +1,309 @@
+﻿const fs = require("fs");
+const path = require("path");
+const MarkdownIt = require("markdown-it");
+
+const ROOT = __dirname;
+const CONTENT_DIR = path.join(ROOT, "content");
+const PUBLIC_DIR = path.join(ROOT, "public");
+const TEMPLATE_FILE = path.join(ROOT, "templates", "page.html");
+const ASSETS_DIR = path.join(ROOT, "assets");
+const WATCH_MODE = process.argv.includes("--watch");
+
+const md = new MarkdownIt({
+  html: false,
+  linkify: true,
+  typographer: false
+});
+
+function ensureDir(dir) {
+  fs.mkdirSync(dir, { recursive: true });
+}
+
+function removeDirContent(dir) {
+  if (!fs.existsSync(dir)) return;
+  for (const name of fs.readdirSync(dir)) {
+    const full = path.join(dir, name);
+    fs.rmSync(full, { recursive: true, force: true });
+  }
+}
+
+function walkContent(baseDir) {
+  const out = [];
+  function walk(cur) {
+    for (const entry of fs.readdirSync(cur, { withFileTypes: true })) {
+      const abs = path.join(cur, entry.name);
+      if (entry.isDirectory()) {
+        walk(abs);
+      } else if (entry.isFile() && entry.name.toLowerCase().endsWith(".md")) {
+        const rel = path.relative(baseDir, abs).replace(/\\/g, "/");
+        out.push({ abs, rel });
+      }
+    }
+  }
+  if (fs.existsSync(baseDir)) walk(baseDir);
+  return out.sort((a, b) => a.rel.localeCompare(b.rel));
+}
+
+function fileToUrl(mdRel) {
+  return "/" + mdRel.replace(/\.md$/i, ".html");
+}
+
+function titleFromText(text, fallback) {
+  const lines = text.split(/\r?\n/);
+  for (const line of lines) {
+    const m = line.match(/^#\s+(.+)/);
+    if (m) return m[1].trim();
+  }
+  return fallback;
+}
+
+function slugifyTag(tag) {
+  return tag.toLowerCase().replace(/[^a-z0-9\u4e00-\u9fa5_-]/gi, "-");
+}
+
+function makeTreeItems(mdFiles) {
+  const root = { type: "dir", name: "root", children: new Map() };
+
+  for (const f of mdFiles) {
+    const parts = f.rel.split("/");
+    let node = root;
+    parts.forEach((part, idx) => {
+      const isLast = idx === parts.length - 1;
+      const key = `${isLast ? "file" : "dir"}:${part}`;
+      if (!node.children.has(key)) {
+        if (isLast) {
+          node.children.set(key, {
+            type: "file",
+            name: part,
+            rel: f.rel,
+            url: fileToUrl(f.rel)
+          });
+        } else {
+          node.children.set(key, { type: "dir", name: part, children: new Map() });
+        }
+      }
+      const next = node.children.get(key);
+      if (next.type === "dir") node = next;
+    });
+  }
+  return root;
+}
+
+function treeToHtml(node) {
+  const items = [...node.children.values()].sort((a, b) => {
+    if (a.type !== b.type) return a.type === "dir" ? -1 : 1;
+    return a.name.localeCompare(b.name);
+  });
+  if (!items.length) return "";
+
+  const html = items
+    .map((it) => {
+      if (it.type === "dir") {
+        return `<li><strong>${it.name}</strong>${treeToHtml(it)}</li>`;
+      }
+      return `<li><a href="${it.url}">${it.name.replace(/\.md$/i, "")}</a></li>`;
+    })
+    .join("");
+
+  return `<ul>${html}</ul>`;
+}
+
+function copyDir(src, dst) {
+  if (!fs.existsSync(src)) return;
+  ensureDir(dst);
+  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+    const a = path.join(src, entry.name);
+    const b = path.join(dst, entry.name);
+    if (entry.isDirectory()) {
+      copyDir(a, b);
+    } else {
+      ensureDir(path.dirname(b));
+      fs.copyFileSync(a, b);
+    }
+  }
+}
+
+function transformWikiLinks(text, byName) {
+  return text.replace(/\[\[([^\]]+)\]\]/g, (_, raw) => {
+    const name = raw.trim();
+    const found = byName.get(name.toLowerCase());
+    if (!found) return `[[${name}]]`;
+    return `[${name}](${found.url})`;
+  });
+}
+
+function normalizeMdAssetPath(mdRelDir, p) {
+  if (!p || /^(https?:)?\/\//i.test(p) || p.startsWith("data:")) return p;
+  if (p.startsWith("/assets/")) return p;
+  if (/^\.\/?assets\//i.test(p) || /^assets\//i.test(p)) {
+    return "/assets/" + p.replace(/^\.\/?assets\//i, "").replace(/^assets\//i, "");
+  }
+  if (p.startsWith("./") || p.startsWith("../")) {
+    const resolved = path.posix.normalize(path.posix.join(mdRelDir, p));
+    const marker = "/assets/";
+    const at = resolved.indexOf(marker);
+    if (at >= 0) return resolved.slice(at);
+  }
+  return p;
+}
+
+function rewriteAssetLinks(mdRaw, mdRel) {
+  const mdRelDir = path.posix.dirname(mdRel);
+  let out = mdRaw;
+  out = out.replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, (_, alt, p) => `![${alt}](${normalizeMdAssetPath(mdRelDir, p)})`);
+  out = out.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_, txt, p) => `[${txt}](${normalizeMdAssetPath(mdRelDir, p)})`);
+  return out;
+}
+
+function extractTags(mdRaw) {
+  const tags = new Set();
+  const noCode = mdRaw.replace(/```[\s\S]*?```/g, "");
+  const re = /(^|\s)#([\p{L}\p{N}_-]+)/gu;
+  let m;
+  while ((m = re.exec(noCode)) !== null) {
+    tags.add(m[2]);
+  }
+  return [...tags];
+}
+
+function renderPage(template, title, treeHtml, contentHtml) {
+  return template
+    .replace(/\{\{title\}\}/g, title)
+    .replace(/\{\{tree\}\}/g, treeHtml)
+    .replace(/\{\{content\}\}/g, contentHtml);
+}
+
+function buildSite() {
+  ensureDir(CONTENT_DIR);
+  ensureDir(PUBLIC_DIR);
+  ensureDir(ASSETS_DIR);
+
+  removeDirContent(PUBLIC_DIR);
+  copyDir(ASSETS_DIR, path.join(PUBLIC_DIR, "assets"));
+
+  const template = fs.readFileSync(TEMPLATE_FILE, "utf8");
+  const mdFiles = walkContent(CONTENT_DIR);
+
+  const byName = new Map();
+  for (const f of mdFiles) {
+    const name = path.basename(f.rel, ".md");
+    byName.set(name.toLowerCase(), { rel: f.rel, url: fileToUrl(f.rel) });
+  }
+
+  const treeHtml = treeToHtml(makeTreeItems(mdFiles));
+  const pages = [];
+  const backlinks = new Map();
+  const tagMap = new Map();
+
+  for (const f of mdFiles) {
+    const raw = fs.readFileSync(f.abs, "utf8");
+    const pageTitle = titleFromText(raw, path.basename(f.rel, ".md"));
+
+    const wikiTargets = [...raw.matchAll(/\[\[([^\]]+)\]\]/g)].map((x) => x[1].trim());
+    for (const t of wikiTargets) {
+      const hit = byName.get(t.toLowerCase());
+      if (!hit) continue;
+      if (!backlinks.has(hit.rel)) backlinks.set(hit.rel, new Set());
+      backlinks.get(hit.rel).add(f.rel);
+    }
+
+    const tags = extractTags(raw);
+    for (const t of tags) {
+      if (!tagMap.has(t)) tagMap.set(t, []);
+      tagMap.get(t).push({ rel: f.rel, url: fileToUrl(f.rel), title: pageTitle });
+    }
+
+    const withWiki = transformWikiLinks(raw, byName);
+    const withAssets = rewriteAssetLinks(withWiki, f.rel);
+    pages.push({ rel: f.rel, url: fileToUrl(f.rel), title: pageTitle, raw, md: withAssets, tags });
+  }
+
+  for (const p of pages) {
+    const html = md.render(p.md);
+
+    const bl = backlinks.get(p.rel);
+    const backlinksHtml = bl && bl.size
+      ? `<h3>Backlinks</h3><ul>${[...bl]
+          .sort()
+          .map((rel) => {
+            const title = pages.find((x) => x.rel === rel)?.title || path.basename(rel, ".md");
+            return `<li><a href="${fileToUrl(rel)}">${title}</a></li>`;
+          })
+          .join("")}</ul>`
+      : "<h3>Backlinks</h3><p>暂无反向链接</p>";
+
+    const tagsHtml = p.tags.length
+      ? `<p>标签：${p.tags.map((t) => `<a href="/tags/${slugifyTag(t)}.html">#${t}</a>`).join(" ")}</p>`
+      : "<p>标签：无</p>";
+
+    const wrapped = `<article>${html}<section class="meta">${tagsHtml}${backlinksHtml}</section></article>`;
+    const pageHtml = renderPage(template, p.title, treeHtml, wrapped);
+
+    const outFile = path.join(PUBLIC_DIR, p.rel.replace(/\.md$/i, ".html"));
+    ensureDir(path.dirname(outFile));
+    fs.writeFileSync(outFile, pageHtml, "utf8");
+  }
+
+  const indexItems = pages
+    .map((p) => `<li><a href="${p.url}">${p.title}</a> <small>${p.rel}</small></li>`)
+    .join("");
+  const indexContent = `<h1>知识库首页</h1><p>共 ${pages.length} 篇文档</p><ul>${indexItems}</ul>`;
+  fs.writeFileSync(path.join(PUBLIC_DIR, "index.html"), renderPage(template, "首页", treeHtml, indexContent), "utf8");
+
+  const tagDir = path.join(PUBLIC_DIR, "tags");
+  ensureDir(tagDir);
+  const tagIndexList = [...tagMap.keys()]
+    .sort((a, b) => a.localeCompare(b))
+    .map((t) => `<li><a href="/tags/${slugifyTag(t)}.html">#${t}</a> (${tagMap.get(t).length})</li>`)
+    .join("");
+
+  fs.writeFileSync(path.join(tagDir, "index.html"), renderPage(template, "标签", treeHtml, `<h1>标签页</h1><ul>${tagIndexList}</ul>`), "utf8");
+
+  for (const [tag, items] of tagMap.entries()) {
+    const list = items.map((it) => `<li><a href="${it.url}">${it.title}</a></li>`).join("");
+    const content = `<h1>#${tag}</h1><ul>${list}</ul>`;
+    fs.writeFileSync(path.join(tagDir, `${slugifyTag(tag)}.html`), renderPage(template, `#${tag}`, treeHtml, content), "utf8");
+  }
+
+  const search = pages.map((p) => ({
+    title: p.title,
+    path: p.url,
+    content: p.raw.replace(/```[\s\S]*?```/g, " ").replace(/[#>*`\[\]\(\)!_-]/g, " ").replace(/\s+/g, " ").trim()
+  }));
+  fs.writeFileSync(path.join(PUBLIC_DIR, "search.json"), JSON.stringify(search, null, 2), "utf8");
+
+  console.log(`[build] done at ${new Date().toLocaleString()} | pages=${pages.length}`);
+}
+
+function startWatch() {
+  let chokidar;
+  try {
+    chokidar = require("chokidar");
+  } catch {
+    console.log("[watch] chokidar 未安装，跳过 watch 模式。");
+    return;
+  }
+
+  buildSite();
+
+  const watcher = chokidar.watch([CONTENT_DIR, TEMPLATE_FILE, ASSETS_DIR], {
+    ignoreInitial: true
+  });
+
+  const rebuild = () => {
+    try {
+      buildSite();
+    } catch (err) {
+      console.error("[build] failed:", err.message);
+    }
+  };
+
+  watcher.on("add", rebuild).on("change", rebuild).on("unlink", rebuild).on("addDir", rebuild).on("unlinkDir", rebuild);
+  console.log("[watch] listening for file changes...");
+}
+
+if (WATCH_MODE) {
+  startWatch();
+} else {
+  buildSite();
+}
