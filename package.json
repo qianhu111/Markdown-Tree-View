@@ -7,7 +7,9 @@
     "build": "node build.js",
     "watch": "node build.js --watch",
     "serve": "node server.js",
-    "start": "node server.js"
+    "start": "node server.js",
+    "run:all": "node launcher.js",
+    "run:gui": "node launcher.js --gui"
   },
   "dependencies": {
     "chokidar": "^4.0.3",

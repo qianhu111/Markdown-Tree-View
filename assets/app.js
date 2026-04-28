@@ -24,13 +24,35 @@
     { text: "标签", href: "/tags/index.html" }
   ];
 
+  function syncTreeButtonText() {
+    if (!navToolbar) return;
+    const btn = navToolbar.querySelector('button[data-action="tree"]');
+    if (!btn) return;
+    btn.textContent = "目录";
+  }
+
+  function hideSidebar() {
+    document.body.classList.add("sidebar-hidden");
+    syncTreeButtonText();
+  }
+
+  function showSidebar() {
+    document.body.classList.remove("sidebar-hidden");
+    syncTreeButtonText();
+  }
+
+  function toggleSidebar() {
+    document.body.classList.toggle("sidebar-hidden");
+    syncTreeButtonText();
+  }
+
   function enterReadingMode() {
-    document.body.classList.add("reading-mode");
+    hideSidebar();
     if (backToTree) backToTree.classList.remove("hidden");
   }
 
   function exitReadingMode() {
-    document.body.classList.remove("reading-mode");
+    showSidebar();
     if (backToTree) backToTree.classList.add("hidden");
   }
 
@@ -42,8 +64,9 @@
     navToolbar.addEventListener("click", (e) => {
       const btn = e.target.closest("button[data-action]");
       if (!btn) return;
-      if (btn.dataset.action === "tree") exitReadingMode();
+      if (btn.dataset.action === "tree") toggleSidebar();
     });
+    syncTreeButtonText();
   }
 
   if (backToTree) backToTree.addEventListener("click", exitReadingMode);
@@ -117,3 +140,4 @@
     });
   });
 })();
+
