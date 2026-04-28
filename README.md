@@ -74,6 +74,12 @@ node build.js --watch
 node server.js
 ```
 
+### 🗑️ 删除项目
+
+```bash
+Remove-Item -LiteralPath "D:\Markdown Tree View" -Recurse -Force
+```
+
 访问：
 
 - 🌐 http://127.0.0.1:3000
