@@ -3,4 +3,3 @@ public/
 *.log
 .DS_Store
 .runner-pids.json
-public
