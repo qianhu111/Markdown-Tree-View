@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'" />
+<title>Markdown Tree View · Runner</title>
+<style>
+body{margin:0;font-family:"Segoe UI","PingFang SC",sans-serif;background:linear-gradient(120deg,#eff5ff,#eefaf4);color:#1d2433}
+.wrap{max-width:920px;margin:24px auto;padding:0 14px}
+.card{background:#fff;border:1px solid #d8e2f0;border-radius:14px;padding:16px;box-shadow:0 14px 30px rgba(23,34,60,.08)}
+h1{margin:0 0 6px}
+.muted{color:#60708b}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+label{font-size:13px;color:#4a5b77;display:block;margin-bottom:5px}
+input,select{width:100%;padding:9px 10px;border:1px solid #cfd9ea;border-radius:10px;background:#fff;font:inherit}
+.row{margin-top:12px;display:flex;gap:10px;flex-wrap:wrap}
+button,a.btn{padding:9px 13px;border-radius:10px;border:1px solid #c7d6ee;background:#0b63d7;color:#fff;text-decoration:none;cursor:pointer;font:inherit}
+button.alt,a.btn.alt{background:#fff;color:#1d2433}
+button.danger{background:#d12a2a;border-color:#b21f1f}
+button:disabled{opacity:.6;cursor:not-allowed}
+pre{background:#0f1724;color:#dce7ff;border-radius:10px;padding:10px;overflow:auto;max-height:240px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <h1>运行控制台</h1>
+    <p class="muted">build watcher 与站点服务已在本进程运行。修改后点击保存可即时生效。</p>
+    <div id="status" class="muted"></div>
+    <form id="cfg" class="grid">
+      <div><label>站点标题 siteTitle</label><input name="siteTitle" /></div>
+      <div><label>监听地址 host</label><input name="host" /></div>
+      <div><label>服务端口 port</label><input name="port" type="number" min="1" /></div>
+      <div><label>在线编辑 enableEdit</label><select name="enableEdit"><option value="true">true</option><option value="false">false</option></select></div>
+      <div><label>内容目录 contentDir</label><input name="contentDir" /></div>
+      <div><label>输出目录 publicDir</label><input name="publicDir" /></div>
+      <div><label>模板目录 templatesDir</label><input name="templatesDir" /></div>
+      <div><label>资源目录 assetsDir</label><input name="assetsDir" /></div>
+    </form>
+    <div class="row">
+      <button id="saveBtn" type="button">保存配置</button>
+      <button id="openBtn" type="button" class="alt">打开站点</button>
+      <button id="refreshBtn" type="button" class="alt">刷新状态</button>
+      <button id="stopBtn" type="button" class="danger">停止</button>
+    </div>
+    <pre id="log"></pre>
+  </div>
+</div>
+<script src="renderer.js"></script>
+</body>
+</html>

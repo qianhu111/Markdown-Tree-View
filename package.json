@@ -1,19 +1,57 @@
-﻿{
+{
   "name": "markdown-tree-view",
   "version": "1.0.0",
   "description": "A lightweight local Markdown knowledge base (Hexo + Obsidian style)",
-  "main": "server.js",
+  "main": "electron/main.js",
   "scripts": {
     "build": "node build.js",
     "watch": "node build.js --watch",
     "serve": "node server.js",
     "start": "node server.js",
     "run:all": "node launcher.js",
-    "run:gui": "node launcher.js --gui"
+    "run:gui": "node launcher.js --gui",
+    "electron": "electron .",
+    "dist": "electron-builder --win portable",
+    "dist:installer": "electron-builder --win nsis"
   },
   "dependencies": {
     "chokidar": "^4.0.3",
     "express": "^4.21.2",
     "markdown-it": "^14.1.0"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0"
+  },
+  "build": {
+    "appId": "com.qianhu.markdown-tree-view",
+    "productName": "start",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "electron/**",
+      "lib/**",
+      "build.js",
+      "server.js",
+      "launcher.js",
+      "package.json",
+      "!defaults/**",
+      "!dist/**",
+      "!public/**"
+    ],
+    "extraResources": [
+      {
+        "from": "defaults",
+        "to": "defaults"
+      }
+    ],
+    "win": {
+      "target": "portable",
+      "artifactName": "start.exe"
+    },
+    "portable": {
+      "artifactName": "start.exe"
+    }
   }
 }

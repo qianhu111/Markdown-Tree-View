@@ -1,0 +1,10 @@
+{
+  "siteTitle": "我的知识库",
+  "contentDir": "content",
+  "publicDir": "public",
+  "templatesDir": "templates",
+  "assetsDir": "assets",
+  "host": "127.0.0.1",
+  "port": 3000,
+  "enableEdit": true
+}
