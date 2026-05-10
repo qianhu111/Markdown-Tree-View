@@ -1,16 +1,17 @@
-﻿<div align="center">
+<div align="center">
 
 # 📚 Markdown Tree View
 
 > 🧠 一个类 Obsidian 的本地 Markdown 知识库系统  
-> ⚡ 支持双链 / 标签 / 搜索 / 静态构建 / 本地服务
+> ⚡ 支持双链 / 标签 / 搜索 / 静态构建 / 本地服务 / 桌面端
 
 ---
 
 </div>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Node.js-16%2B-green?logo=node.js">
+  <img src="https://img.shields.io/badge/Node.js-18%2B-green?logo=node.js">
+  <img src="https://img.shields.io/badge/Electron-Desktop-blueviolet?logo=electron">
   <img src="https://img.shields.io/badge/Markdown-Renderer-blue">
   <img src="https://img.shields.io/badge/License-MIT-yellow">
 </p>
@@ -28,6 +29,7 @@
 - 📦 一键构建静态站点
 - 🌙 暗色模式支持
 - 🖥️ 本地 HTTP 服务预览
+- 🪟 **桌面端 `start.exe`：原生窗口、首次自动释放默认资源、内置启停按钮**
 
 ---
 
@@ -36,60 +38,97 @@
 ```text
 project/
 ├── content/        # Markdown 源文件
-├── public/         # 构建输出（HTML）
+├── public/         # 构建输出（HTML，构建时生成）
 ├── templates/      # 页面模板
 ├── assets/         # 静态资源
-├── build.js        # 构建系统
-├── server.js       # 本地服务
+├── lib/            # paths / config / builder / server 共用模块
+├── electron/       # main.js / preload.js / renderer.html|js
+├── defaults/       # exe 内置的默认资源快照（首次释放用）
+├── build.js        # 构建 CLI 入口
+├── server.js       # 本地服务 CLI 入口
+├── launcher.js     # 浏览器版控制台（可选）
 └── package.json
 ```
 
-## ⚙️ 使用方式
+---
 
-### 🗂️ 克隆项目
+## 🚀 三种使用方式
+
+### A. 桌面端（普通用户推荐）
+
+下载 [Releases](https://github.com/qianhu111/Markdown-Tree-View/releases) 中的 `start.exe`，放到任意空目录双击：
+
+- 首次启动会**自动在同目录释放** `config.json` / `content/` / `templates/` / `assets/`；
+- 弹出原生窗口"运行控制台"，可改站点标题、端口、目录、是否启用在线编辑；
+- 点 **打开站点** 用默认浏览器查看 `http://127.0.0.1:3000`；
+- 点 **停止** 关闭服务并退出（关闭窗口也是同样效果，无需任务管理器）。
+
+> ⚠️ 之后再次启动不会覆盖你已修改的内容；想恢复默认值就把对应文件/目录删掉再启动。
+
+### B. 命令行（开发者）
+
 ```bash
+# 克隆
 git clone https://github.com/qianhu111/Markdown-Tree-View.git
-```
-
-### 📦 安装依赖
-```bash
+cd Markdown-Tree-View
 npm install
+
+# 一次性构建
+npm run build      # 等价于 node build.js
+
+# 监听模式（自动重建）
+npm run watch      # 等价于 node build.js --watch
+
+# 启动 HTTP 服务
+npm run serve      # 等价于 node server.js
+# 浏览：http://127.0.0.1:3000
+# 编辑：http://127.0.0.1:3000/edit?file=notes/intro.md
 ```
 
-### 🏗️ 构建项目
+### C. Electron 开发态
 
 ```bash
-node build.js
+npm run electron   # 直接以开发模式启动桌面端，等同于 start.exe 的体验
 ```
 
-### 👀 监听模式（开发）
+---
+
+## 📦 打包成 start.exe
 
 ```bash
-node build.js --watch
+npm run dist       # 输出 dist/start.exe（portable，单文件，~70MB）
 ```
 
-### 🚀 启动服务
+> ℹ️ 在**普通用户权限**的 Windows 上首次执行 `npm run dist` 时，`electron-builder` 会下载 `winCodeSign-2.6.0.7z`，里面包含 macOS dylib 符号链接；若未启用 Windows 开发者模式，符号链接创建会失败。解决：把 `%LOCALAPPDATA%\electron-builder\Cache\winCodeSign\winCodeSign-2.6.0\` 预解压（用 `-xr'!darwin'` 排除 macOS 子目录），或开启 Windows 开发者模式。
 
-```bash
-node server.js
-```
+---
 
-### 🗑️ 删除项目
+## ⚙️ 配置
 
-```bash
-Remove-Item -LiteralPath "D:\Markdown Tree View" -Recurse -Force
-```
+`config.json`：
 
-访问：
+| 字段 | 默认值 | 说明 |
+|---|---|---|
+| `siteTitle` | `"Markdown Tree View"` | 站点标题 |
+| `host` | `"127.0.0.1"` | 监听地址 |
+| `port` | `3000` | 服务端口 |
+| `enableEdit` | `true` | 是否启用 `/edit` 编辑页 |
+| `contentDir` | `"content"` | Markdown 源目录 |
+| `publicDir` | `"public"` | 构建输出目录 |
+| `templatesDir` | `"templates"` | 模板目录 |
+| `assetsDir` | `"assets"` | 静态资源目录 |
 
-- 🌐 http://127.0.0.1:3000
-- ✏️ 编辑页：http://127.0.0.1:3000/edit
+---
 
 ## 🧠 实现能力
+
 - Markdown → HTML 静态生成
 - 类 Hexo 构建流程
 - 双链知识网络结构
 - 本地可运行知识库系统
+- 跨平台单文件桌面分发（Windows）
+
+---
 
 ## 🚀 预览效果
 
@@ -113,5 +152,20 @@ Remove-Item -LiteralPath "D:\Markdown Tree View" -Recurse -Force
   </tr>
 </table>
 
+---
+
+## 🗑️ 卸载
+
+```powershell
+# 桌面端
+Remove-Item -LiteralPath "D:\路径\到\start.exe 所在目录" -Recurse -Force
+
+# 源码项目
+Remove-Item -LiteralPath "D:\Markdown-Tree-View" -Recurse -Force
+```
+
+---
+
 ## 📄 License
+
 [MIT License](https://github.com/qianhu111/Markdown-Tree-View/blob/main/LICENSE)
