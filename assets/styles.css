@@ -207,3 +207,123 @@ body { letter-spacing: 0.1px; }
   margin-left: 20px;
 }
 
+
+/* ===== Edit link in topbar ===== */
+.edit-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: var(--panel-strong);
+  border: 1px solid var(--line);
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 550;
+  font-size: 14px;
+}
+.edit-link:hover { background: var(--link); color: #fff; border-color: var(--link); }
+
+/* ===== Editor page ===== */
+body.editor-page .editor-path {
+  color: var(--muted);
+  font-family: "JetBrains Mono", "Consolas", monospace;
+  font-size: 13px;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+body.editor-page .editor-path .badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #2ea44f;
+  color: #fff;
+  font-size: 11px;
+  margin-left: 8px;
+}
+.editor-main {
+  max-width: 1100px;
+  margin: 16px auto;
+  padding: 0 16px;
+}
+.editor-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-bottom: 1px solid var(--line);
+  padding: 0 4px;
+  background: var(--panel);
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+}
+.editor-tabs .tab {
+  appearance: none;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 10px 14px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 550;
+  color: var(--muted);
+  cursor: pointer;
+}
+.editor-tabs .tab:hover { color: var(--text); }
+.editor-tabs .tab.active {
+  color: var(--text);
+  border-bottom-color: var(--link);
+}
+.editor-tabs .editor-status {
+  flex: 1;
+  font-size: 13px;
+  color: var(--muted);
+  padding: 0 12px;
+  text-align: right;
+}
+.editor-tabs .editor-status[data-kind="dirty"] { color: #d97706; }
+.editor-tabs .editor-status[data-kind="saving"] { color: var(--link); }
+.editor-tabs .editor-status[data-kind="saved"] { color: #2ea44f; }
+.editor-tabs .editor-status[data-kind="error"] { color: #d12a2a; }
+.editor-tabs .save-btn {
+  appearance: none;
+  background: var(--link);
+  color: #fff;
+  border: 1px solid var(--link);
+  border-radius: 8px;
+  padding: 7px 16px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  margin: 6px 8px 6px 0;
+}
+.editor-tabs .save-btn:hover:not(:disabled) { filter: brightness(1.05); }
+.editor-tabs .save-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.editor-pane {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-top: none;
+  border-bottom-left-radius: 12px;
+  border-bottom-right-radius: 12px;
+  min-height: 70vh;
+  box-shadow: var(--shadow);
+}
+.editor-pane.edit-pane { padding: 0; }
+.editor-pane.preview-pane { padding: 24px 28px; }
+.editor-pane.preview-pane > article { max-width: none; }
+#editorTextarea {
+  width: 100%;
+  min-height: 70vh;
+  padding: 16px 18px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-family: "JetBrains Mono", "Cascadia Code", "Consolas", "Fira Code", monospace;
+  font-size: 14px;
+  line-height: 1.65;
+  resize: vertical;
+  outline: none;
+  border-radius: 0 0 12px 12px;
+}
+.editor-pane.hidden { display: none; }

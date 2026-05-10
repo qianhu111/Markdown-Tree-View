@@ -9,6 +9,17 @@
   const sidebar = document.getElementById("sidebar");
   const backToTree = document.getElementById("backToTree");
   const navToolbar = document.getElementById("navToolbar");
+  const editLink = document.getElementById("editArticleLink");
+
+  // Show the Edit button only on rendered article pages (those have data-md-src).
+  const article = document.querySelector("article[data-md-src]");
+  if (editLink && article) {
+    const rel = article.getAttribute("data-md-src");
+    if (rel) {
+      editLink.href = "/edit?file=" + encodeURIComponent(rel);
+      editLink.classList.remove("hidden");
+    }
+  }
 
   if (toggle) {
     toggle.addEventListener("click", () => {
