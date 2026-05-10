@@ -110,6 +110,7 @@ function createWindow() {
     width: 980,
     height: 720,
     title: "Markdown Tree View · Runner",
+    icon: path.join(__dirname, "..", "build", "icon.ico"),
     autoHideMenuBar: true,
     backgroundColor: "#eff5ff",
     webPreferences: {
@@ -133,12 +134,20 @@ app.whenReady().then(async () => {
 });
 
 app.on("window-all-closed", () => {
-  cleanupAndQuit();
+  shutdown();
 });
 
-async function cleanupAndQuit() {
-  try { if (state.watcher) state.watcher.close(); } catch {}
-  try { if (state.server) await state.server.close(); } catch {}
+let shuttingDown = false;
+function shutdown() {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  // Best-effort cleanup. Don't await — we want the process to die fast and
+  // unconditionally, even if a watcher or HTTP keep-alive holds a handle.
+  try { state.watcher && state.watcher.close(); } catch {}
+  try { state.server && state.server.close().catch(() => {}); } catch {}
+  // Hard backstop: if anything (chokidar, pending sockets, dialogs) still keeps
+  // the event loop alive after a short grace, exit unconditionally.
+  setTimeout(() => app.exit(0), 400);
   app.quit();
 }
 
@@ -173,7 +182,9 @@ ipcMain.handle("site:open", async () => {
   return { ok: true };
 });
 
-ipcMain.handle("app:stop", async () => {
-  await cleanupAndQuit();
+ipcMain.handle("app:stop", () => {
+  // Respond immediately so the renderer doesn't sit on "stopping...".
+  // shutdown() schedules a hard exit on its own.
+  setImmediate(shutdown);
   return { ok: true };
 });

@@ -1,6 +1,27 @@
+# dependencies
 node_modules/
+
+# build output
 public/
 dist/
-*.log
-.DS_Store
+
+# runtime
 .runner-pids.json
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# editors
+.vscode/
+.idea/
+
+# temp
+*.tmp
+
+# secrets
+.env
+.env.local
+.env.*.local

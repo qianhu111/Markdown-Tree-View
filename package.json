@@ -32,6 +32,7 @@
     "files": [
       "electron/**",
       "lib/**",
+      "build/icon.ico",
       "build.js",
       "server.js",
       "launcher.js",
@@ -48,6 +49,7 @@
     ],
     "win": {
       "target": "portable",
+      "icon": "build/icon.ico",
       "artifactName": "start.exe"
     },
     "portable": {
