@@ -29,7 +29,8 @@
 - 📦 一键构建静态站点
 - 🌙 暗色模式支持
 - 🖥️ 本地 HTTP 服务预览
-- 🪟 **桌面端 `start.exe`：原生窗口、首次自动释放默认资源、内置启停按钮**
+- ✏️ **就地编辑**：文章页右上角 `✏️ 编辑` 按钮 → 进入 GitHub 风格的 编辑 / 预览 双 tab 页面，保存后自动重建并跳回文章
+- 🪟 **桌面端 `start.exe`**：原生窗口、首次自动释放默认资源、内置启停按钮，无需 Node / 浏览器依赖
 
 ---
 
@@ -37,16 +38,16 @@
 
 ```text
 project/
-├── content/        # Markdown 源文件
-├── public/         # 构建输出（HTML，构建时生成）
+├── content/        # Markdown 源文件（同时作为 exe 内置默认资源）
+├── public/         # 构建输出（HTML，构建时生成，已忽略）
 ├── templates/      # 页面模板
-├── assets/         # 静态资源
+├── assets/         # 静态资源（styles.css / app.js / edit.js / ...）
+├── build/icon.ico  # 应用图标（多分辨率 BMP-encoded）
 ├── lib/            # paths / config / builder / server 共用模块
 ├── electron/       # main.js / preload.js / renderer.html|js
-├── defaults/       # exe 内置的默认资源快照（首次释放用）
 ├── build.js        # 构建 CLI 入口
 ├── server.js       # 本地服务 CLI 入口
-├── launcher.js     # 浏览器版控制台（可选）
+├── launcher.js     # 浏览器版控制台（保留用于 dev）
 └── package.json
 ```
 
@@ -56,14 +57,17 @@ project/
 
 ### A. 桌面端（普通用户推荐）
 
-下载 [Releases](https://github.com/qianhu111/Markdown-Tree-View/releases) 中的 `start.exe`，放到任意空目录双击：
+下载 [Releases](https://github.com/qianhu111/Markdown-Tree-View/releases) 中的 `start.exe`，放到任意**自己有写权限**的目录双击：
 
 - 首次启动会**自动在同目录释放** `config.json` / `content/` / `templates/` / `assets/`；
 - 弹出原生窗口"运行控制台"，可改站点标题、端口、目录、是否启用在线编辑；
 - 点 **打开站点** 用默认浏览器查看 `http://127.0.0.1:3000`；
-- 点 **停止** 关闭服务并退出（关闭窗口也是同样效果，无需任务管理器）。
+- 在任意文章页右上角点 **`✏️ 编辑`** 进入编辑器：左边写 markdown，点 **预览** 即可看到渲染效果（含 `[[双链]]` 解析），`Ctrl+S` 或点击保存即重建并跳回文章；
+- 点 **停止** 关闭服务并退出（关闭窗口同样效果，无需任务管理器）。
 
-> ⚠️ 之后再次启动不会覆盖你已修改的内容；想恢复默认值就把对应文件/目录删掉再启动。
+> ⚠️ 之后再次启动**不会**覆盖你已修改的内容；想恢复默认值就把对应文件/目录删掉再启动。
+>
+> ⚠️ 首次运行 Windows SmartScreen 会提示"未知发布者"——`start.exe` 未做代码签名是已知的，点"更多信息 → 仍要运行"即可。同一台机器只需做一次。
 
 ### B. 命令行（开发者）
 
@@ -81,9 +85,12 @@ npm run watch      # 等价于 node build.js --watch
 
 # 启动 HTTP 服务
 npm run serve      # 等价于 node server.js
-# 浏览：http://127.0.0.1:3000
-# 编辑：http://127.0.0.1:3000/edit?file=notes/intro.md
 ```
+
+服务起来后：
+
+- 浏览：`http://127.0.0.1:3000`
+- 在任意文章页点 **`✏️ 编辑`** 即可进编辑器（兼容老用法 `?file=...`）
 
 ### C. Electron 开发态
 
@@ -125,8 +132,9 @@ npm run dist       # 输出 dist/start.exe（portable，单文件，~70MB）
 - Markdown → HTML 静态生成
 - 类 Hexo 构建流程
 - 双链知识网络结构
+- 浏览器端编辑器 + 服务端渲染预览（共用同一套构建管线）
 - 本地可运行知识库系统
-- 跨平台单文件桌面分发（Windows）
+- 单文件桌面分发（Windows）
 
 ---
 
