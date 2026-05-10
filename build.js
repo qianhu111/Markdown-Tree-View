@@ -1,55 +1,11 @@
-﻿const fs = require("fs");
+const fs = require("fs");
 const path = require("path");
 const MarkdownIt = require("markdown-it");
+const { ROOT, CONFIG_FILE, loadConfig } = require("./lib/config");
 
-const ROOT = __dirname;
-const CONFIG_FILE = path.join(ROOT, "config.json");
 const WATCH_MODE = process.argv.includes("--watch");
 
-function readTextAuto(file) {
-  const buf = fs.readFileSync(file);
-  if (buf.length >= 2 && buf[0] === 0xff && buf[1] === 0xfe) return buf.toString("utf16le");
-  if (buf.length >= 2 && buf[0] === 0xfe && buf[1] === 0xff) {
-    const swapped = Buffer.allocUnsafe(buf.length - 2);
-    for (let i = 2; i < buf.length; i += 2) {
-      swapped[i - 2] = buf[i + 1];
-      swapped[i - 1] = buf[i];
-    }
-    return swapped.toString("utf16le");
-  }
-  return buf.toString("utf8");
-}
-
-function loadConfig() {
-  const fallback = {
-    siteTitle: "Markdown Tree View",
-    contentDir: "content",
-    publicDir: "public",
-    templatesDir: "templates",
-    assetsDir: "assets"
-  };
-  if (!fs.existsSync(CONFIG_FILE)) return fallback;
-  try {
-    const raw = readTextAuto(CONFIG_FILE).replace(/^\uFEFF/, "");
-    const cleaned = raw
-      .replace(/\/\/.*$/gm, "")
-      .replace(/\/\*[\s\S]*?\*\//g, "");
-    const normalized = cleaned.replace(/[“”]/g, '"').replace(/[‘’]/g, '"');
-    const cfg = JSON.parse(normalized);
-    return {
-      siteTitle: typeof cfg.siteTitle === "string" && cfg.siteTitle.trim() ? cfg.siteTitle.trim() : fallback.siteTitle,
-      contentDir: typeof cfg.contentDir === "string" && cfg.contentDir.trim() ? cfg.contentDir.trim() : fallback.contentDir,
-      publicDir: typeof cfg.publicDir === "string" && cfg.publicDir.trim() ? cfg.publicDir.trim() : fallback.publicDir,
-      templatesDir: typeof cfg.templatesDir === "string" && cfg.templatesDir.trim() ? cfg.templatesDir.trim() : fallback.templatesDir,
-      assetsDir: typeof cfg.assetsDir === "string" && cfg.assetsDir.trim() ? cfg.assetsDir.trim() : fallback.assetsDir
-    };
-  } catch (err) {
-    console.warn("[config] parse failed, fallback defaults:", err.message);
-    return fallback;
-  }
-}
-
-const config = loadConfig();
+const config = loadConfig(["siteTitle", "contentDir", "publicDir", "templatesDir", "assetsDir"]);
 const CONTENT_DIR = path.resolve(ROOT, config.contentDir);
 const PUBLIC_DIR = path.resolve(ROOT, config.publicDir);
 const TEMPLATE_FILE = path.resolve(ROOT, config.templatesDir, "page.html");
@@ -82,7 +38,7 @@ function titleFromText(text, fallback) {
   }
   return fallback;
 }
-function slugifyTag(tag) { return tag.toLowerCase().replace(/[^a-z0-9\u4e00-\u9fa5_-]/gi, "-"); }
+function slugifyTag(tag) { return tag.toLowerCase().replace(/[^a-z0-9一-龥_-]/gi, "-"); }
 
 function makeTreeItems(mdFiles) {
   const root = { type: "dir", name: "root", children: new Map() };
@@ -246,7 +202,6 @@ function startWatch() {
 
   buildSite();
 
-  // Watch config.json explicitly and debounce rebuilds to support editors that save via temp-file replace.
   const watchTargets = [CONTENT_DIR, TEMPLATE_FILE, ASSETS_DIR, CONFIG_FILE];
   const watcher = chokidar.watch(watchTargets, {
     ignoreInitial: true,
@@ -278,7 +233,3 @@ function startWatch() {
 
 if (WATCH_MODE) startWatch();
 else buildSite();
-
-
-
-

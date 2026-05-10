@@ -1,10 +1,9 @@
-﻿const fs = require("fs");
+const fs = require("fs");
 const path = require("path");
 const { spawn, exec, execFile } = require("child_process");
 const express = require("express");
+const { ROOT, loadConfig, writeConfig } = require("./lib/config");
 
-const ROOT = __dirname;
-const CONFIG_FILE = path.join(ROOT, "config.json");
 const PID_FILE = path.join(ROOT, ".runner-pids.json");
 
 const GUI_MODE = process.argv.includes("--gui");
@@ -14,72 +13,12 @@ const GUI_PORT = Number(process.env.GUI_PORT || 3900);
 let watchProc = null;
 let serverProc = null;
 
-function readTextAuto(file) {
-  const buf = fs.readFileSync(file);
-  if (buf.length >= 2 && buf[0] === 0xff && buf[1] === 0xfe) return buf.toString("utf16le");
-  if (buf.length >= 2 && buf[0] === 0xfe && buf[1] === 0xff) {
-    const swapped = Buffer.allocUnsafe(buf.length - 2);
-    for (let i = 2; i < buf.length; i += 2) {
-      swapped[i - 2] = buf[i + 1];
-      swapped[i - 1] = buf[i];
-    }
-    return swapped.toString("utf16le");
-  }
-  return buf.toString("utf8");
-}
-
-function parseConfig() {
-  const fallback = {
-    siteTitle: "Markdown Tree View",
-    contentDir: "content",
-    publicDir: "public",
-    templatesDir: "templates",
-    assetsDir: "assets",
-    host: "127.0.0.1",
-    port: 3000,
-    enableEdit: true
-  };
-  if (!fs.existsSync(CONFIG_FILE)) return fallback;
-
-  try {
-    const raw = readTextAuto(CONFIG_FILE).replace(/^\uFEFF/, "");
-    const cleaned = raw.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
-    const normalized = cleaned.replace(/[“”]/g, '"').replace(/[‘’]/g, '"');
-    const cfg = JSON.parse(normalized);
-    return {
-      siteTitle: String(cfg.siteTitle || fallback.siteTitle),
-      contentDir: String(cfg.contentDir || fallback.contentDir),
-      publicDir: String(cfg.publicDir || fallback.publicDir),
-      templatesDir: String(cfg.templatesDir || fallback.templatesDir),
-      assetsDir: String(cfg.assetsDir || fallback.assetsDir),
-      host: String(cfg.host || fallback.host),
-      port: Number(cfg.port) > 0 ? Number(cfg.port) : fallback.port,
-      enableEdit: cfg.enableEdit !== false
-    };
-  } catch {
-    return fallback;
-  }
-}
-
-function writeConfig(cfg) {
-  const normalized = {
-    siteTitle: String(cfg.siteTitle || "Markdown Tree View"),
-    contentDir: String(cfg.contentDir || "content"),
-    publicDir: String(cfg.publicDir || "public"),
-    templatesDir: String(cfg.templatesDir || "templates"),
-    assetsDir: String(cfg.assetsDir || "assets"),
-    host: String(cfg.host || "127.0.0.1"),
-    port: Number(cfg.port) > 0 ? Number(cfg.port) : 3000,
-    enableEdit: cfg.enableEdit !== false
-  };
-  fs.writeFileSync(CONFIG_FILE, JSON.stringify(normalized, null, 2) + "\n", "utf8");
-}
-
-function spawnNode(args, label) {
+function spawnNode(args, label, env) {
   const proc = spawn(process.execPath, args, {
     cwd: ROOT,
     stdio: HEADLESS_MODE ? "ignore" : "inherit",
-    windowsHide: HEADLESS_MODE
+    windowsHide: HEADLESS_MODE,
+    env: { ...process.env, ...(env || {}) }
   });
   proc.on("exit", (code) => {
     if (!HEADLESS_MODE) console.log(`[runner] ${label} exited (${code})`);
@@ -94,18 +33,8 @@ function startWatch() {
 
 function startServer() {
   if (serverProc && !serverProc.killed) return;
-  serverProc = spawnNode([path.join(ROOT, "server.js")], "server");
-}
-
-function stopServer() {
-  if (serverProc && !serverProc.killed) {
-    serverProc.kill();
-  }
-}
-
-function restartServer() {
-  stopServer();
-  setTimeout(startServer, 200);
+  // Tell server its rebuilds will be handled by the watcher we manage here.
+  serverProc = spawnNode([path.join(ROOT, "server.js")], "server", { RUNNER_WATCH: "1" });
 }
 
 function writePidFile() {
@@ -141,27 +70,24 @@ function startGui() {
   app.use(express.json());
 
   app.get("/api/config", (_, res) => {
-    res.json(parseConfig());
+    res.json(loadConfig());
   });
 
   app.post("/api/config", (req, res) => {
-    const current = parseConfig();
-    const next = {
+    const current = loadConfig();
+    const incoming = req.body || {};
+    const next = writeConfig({
       ...current,
-      ...req.body,
-      port: Number(req.body.port || current.port),
-      enableEdit: req.body.enableEdit === true || req.body.enableEdit === "true"
-    };
+      ...incoming,
+      port: Number(incoming.port || current.port),
+      enableEdit: incoming.enableEdit === true || incoming.enableEdit === "true"
+    });
 
-    writeConfig(next);
-
-    // Equivalent to stop-runner: stop child processes managed by launcher.
     if (watchProc && !watchProc.killed) watchProc.kill();
     if (serverProc && !serverProc.killed) serverProc.kill();
     watchProc = null;
     serverProc = null;
 
-    // Force one full rebuild, then start server again.
     execFile(process.execPath, [path.join(ROOT, "build.js")], { cwd: ROOT }, (err, stdout, stderr) => {
       if (err) {
         return res.status(500).json({ ok: false, error: stderr || err.message, config: next });
@@ -176,7 +102,7 @@ function startGui() {
   });
 
   app.get("/api/status", (_, res) => {
-    const cfg = parseConfig();
+    const cfg = loadConfig(["host", "port"]);
     res.json({
       managerPid: process.pid,
       watchPid: watchProc ? watchProc.pid : null,
@@ -280,14 +206,7 @@ ensureCleanup();
 if (GUI_MODE) {
   startGui();
 } else if (!HEADLESS_MODE) {
-  const cfg = parseConfig();
+  const cfg = loadConfig(["host", "port"]);
   console.log(`[runner] started | site: http://${cfg.host}:${cfg.port}`);
   console.log(`[runner] mode: console`);
 }
-
-
-
-
-
-
-
