@@ -37,15 +37,18 @@
       "server.js",
       "launcher.js",
       "package.json",
-      "!defaults/**",
       "!dist/**",
-      "!public/**"
+      "!public/**",
+      "!content/**",
+      "!templates/**",
+      "!assets/**",
+      "!config.json"
     ],
     "extraResources": [
-      {
-        "from": "defaults",
-        "to": "defaults"
-      }
+      { "from": "config.json", "to": "defaults/config.json" },
+      { "from": "content",     "to": "defaults/content" },
+      { "from": "templates",   "to": "defaults/templates" },
+      { "from": "assets",      "to": "defaults/assets" }
     ],
     "win": {
       "target": "portable",
